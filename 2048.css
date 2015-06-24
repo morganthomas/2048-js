@@ -1,0 +1,27 @@
+* {
+  box-sizing: border-box;
+}
+
+.game {
+  border-collapse: collapse;
+}
+
+.game td {
+  border: 15px solid #BBADA0;
+  /*border-radius: 10px;*/ /* XXX: Doesn't work due to border-collapse */
+  width: 128px;
+  height: 128px;
+  text-align: center;
+  font-size: 64px;
+  font-family: sans-serif;
+  font-weight: bold;
+  color: #776E65;
+}
+
+.cell-type-empty {
+  background-color: #CCC0B3;
+}
+
+.cell-type-occupied {
+  background-color: #EEE4DA;
+}
