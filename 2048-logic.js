@@ -3,7 +3,7 @@
 //
 
 var SEARCH_DEPTH = 4;
-var VALUE_OF_LOSS = -Math.pow(2,24);
+var VALUE_OF_LOSS = -Math.pow(2,20);
 var VALUE_OF_EMPTY_SQUARE_ON_ROW_2 = 32;
 var VALUE_OF_EMPTY_SQUARE_ON_ROW_3 = 128;
 
@@ -56,6 +56,8 @@ function maxBy(metric, array) {
 // tile of value 2^n.
 //
 
+// XXX: use 0 for empty squares to make functions monomorphic.
+
 function Board() {
   this.array = new Array(4);
 
@@ -107,12 +109,6 @@ Board.prototype.eq = function(board2) {
       }
     }
   }
-
-  // allBoardLocs.forEach(function(loc) {
-  //   if (board1.get(loc) !== board2.get(loc)) {
-  //     areEqual = false;
-  //   }
-  // });
 
   return areEqual;
 }
@@ -371,13 +367,13 @@ function squareUtility(board, loc) {
     if (value === null) {
       return 0;
     } else {
-      return Math.pow(2, 2 * value) *
+      return Math.pow(2, value) *
         Math.pow(2, 8 - highSquareOrdinalPos(loc))
          + fineGrainedUtility(board, loc);
     }
   } else {
     if (value === null) {
-      if (loc.row == 2) {
+      if (loc.row === 2) {
         return VALUE_OF_EMPTY_SQUARE_ON_ROW_2;
       } else {
         return VALUE_OF_EMPTY_SQUARE_ON_ROW_3;
@@ -399,9 +395,9 @@ function squareUtility(board, loc) {
 // Takes a square in the top half of the board and returns its ordinal
 // position in the canonical ordering of top half squares.
 function highSquareOrdinalPos(loc) {
-  if (loc.row == 0) {
+  if (loc.row === 0) {
     return 1 + loc.col;
-  } else if (loc.row == 1) {
+  } else if (loc.row === 1) {
     return 4 + (4 - loc.col);
   }
 }
@@ -419,7 +415,7 @@ function fineGrainedUtility(board, loc) {
     var parentValue = board.get({ row: 1, col: loc.col });
 
     if (parentValue !== null && value < parentValue) {
-      return -Math.pow(2, 8 * (parentValue - value));
+      return -Math.pow(2, 4 * (parentValue - value));
     }
   }
 
