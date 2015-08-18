@@ -103,7 +103,7 @@ simple ideas from 2048 strategy.</p>
   (how desirable) a given position is. The "goodness" of a position is measured
   by a number, called the position's "utility." This is just an arbitrary number
   which is assigned by the position evaluation algorithm to attempt to quantify how
-  desirable the position is.</p>
+  strategically desirable the position is.</p>
 
 <p>We calculate the utility of a position by looking at the utility of the various
   positions that it can evolve into. We can think of the possible futures of a
@@ -140,7 +140,7 @@ simple ideas from 2048 strategy.</p>
   the utility of a terminal position. The formula is designed to give
   higher scores to positions which arrange the tiles in ways more closely
   approximating the corner strategy's requirements. For example, it gives
-  higher scores to a high tile if the tile is closer to the top left corner;
+  more points for a high tile if the tile is closer to the top left corner;
   it gives points for keeping the bottom two rows mostly clear; and it takes
   away points for having a high tile in the bottom two rows.</p>
 
@@ -157,7 +157,7 @@ simple ideas from 2048 strategy.</p>
   in the formula, determine which ones do best using statistics, and
   select the values of the parameters accordingly.</p>
 
-<p>Another question I have not explored enough is whether we can profitably increase the search depth
+<p>Another possible improvement would be to increase the search depth
   by figuring out rules or heuristics which let us avoid searching some parts of
   the move tree. Chess AI programs, for example, use
   <a href="https://en.wikipedia.org/wiki/Alpha-beta_pruning">alpha-beta pruning</a>,
