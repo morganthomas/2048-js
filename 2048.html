@@ -3,21 +3,59 @@
 
 <head>
   <meta charset="utf8">
-  <title>Computer 2048</title>
+  <title>2048 Solver AI</title>
+  <link rel="stylesheet" href="bootstrap.min.css">
   <link rel="stylesheet" href="2048.css">
 </head>
 
 <body>
 
-<button id="game-start">Start Game</button>
+<div class="page">
 
-<div class="score-indicator">
-  Score: <span id="score">0</score>
+<h1 class="page-header">2048 Solver AI</h1>
+
+<p><a href="http://gabrielecirulli.github.io/2048/">2048</a> is a very popular game by
+  <a href="https://github.com/gabrielecirulli/">Gabriele Cirulli</a>. Here is how it works: </p>
+
+<ol>
+  <li>The player is presented with a 4x4 grid, where numbered tiles randomly
+  appear.</li>
+  <li>They can use the arrow keys to move the tiles.</li>
+  <li>If they cause two tiles
+  with the same number to collide, they combine into a single tile of twice
+  the value of the original tiles.</li>
+  <li>As the game progresses, this causes tiles' values to increase in powers of two. </li>
+  <li>The goal is to produce a 2048 tile.</li>
+</ol>
+
+<p> If you're not familiar with this game, you can
+  <a href="http://gabrielecirulli.github.io/2048/">try it out</a>
+  to get a better idea of how it works!</p>
+
+<p>2048 is a challenging game for humans; but I have written an AI which reliably
+  wins at it. Here you can watch the AI play. <a href="#how">See below</a> for a technical
+  explanation of how it works.</p>
+
+<div class="controls">
+  <button class="btn btn-default" id="game-start">Start</button>
+  <button class="btn btn-default" id="game-pause">Pause</button>
+  <button class="btn btn-default" id="game-reset">Reset</button>
 </div>
 
-<div class="score-indicator">
+<div class="controls">
+  <label>Speed</label>
+  <input type="range" min="0" max="8" id="game-speed"></input>
+</div>
+
+<div class="controls">
+  <div class="score-indicator">
+    Score: <span id="score">0</score>
+  </div>
+</div>
+
+<!-- <div class="score-indicator">
   Board utility: <span id="board-utility">0</score>
-</div>
+</div> -->
 
 <table class="game">
   <tr>
@@ -45,6 +83,99 @@
     <td id="cell-33"></td>
   </tr>
 </table>
+
+<h2>Technical Explanation</h2>
+<a name="how"></a>
+
+<p>The AI works by combining some simple ideas from game AI with some
+simple ideas from 2048 strategy.</p>
+
+<p>We can think of a game of 2048 as a game between the "player" and the
+  "computer." In the AI, these are actually two parts of the same computer program,
+  but it is useful to think of them as two separate entities. Each time
+  the player moves, the computer randomly adds a new tile to the board, of value
+  either 2 or 4. We can think of this placement of a random tile as the computer's "move."</p>
+
+<p>The basic problem is to write an algorithm which decides, in a given position
+  (i.e., a given board setup),
+  what the best move to make is for the player. The best move is the one which results in the
+  best position; so the problem reduces to finding an algorithm which measures how good
+  (how desirable) a given position is. The "goodness" of a position is measured
+  by a number, called the position's "utility." This is just an arbitrary number
+  which is assigned by the position evaluation algorithm to attempt to quantify how
+  desirable the position is.</p>
+
+<p>We calculate the utility of a position by looking at the utility of the various
+  positions that it can evolve into. We can think of the possible futures of a
+  game as a tree, where each of the player's possible moves creates a branch,
+  and each of the computer's possible moves creates a branch.</p>
+
+<p>We search this tree to a certain depth. At the leaves where we stop our
+  search, we compute the utility of those "terminal positions" using a heuristic
+  algorithm. Then we combine these results to get the utility of positions
+  further up in the tree.</p>
+
+<p>The utility of a position on the player's turn can be calculated as the maximum
+  of the utilities of the positions that result from the player's possible moves.
+  This works because we can assume that the player will always play the move
+  with the highest utility.</p>
+
+<p>The utility of a position on the computer's turn (when it is about to generate
+  a random tile) can be calculated as the average of the utilities of the
+  positions that can result from the computer's move, weighted by how probable
+  they are. This works because the computer moves randomly.</p>
+
+<p>The problem, then, reduces to finding a way to measure the utility of the
+  terminal positions in the search. We can't measure the utilities of these
+  positions by further lookahead; so we have to employ some knowledge of 2048
+  strategy to make a heuristic guess at how good the positions are.</p>
+
+<p>A basic strategy in 2048 is the "corner strategy." One tries to put one's
+  highest tiles on the top row, and on the second-from-top row when the top
+  row fills up. (One could also use any other edge of the board instead of the top row.) One tries
+  to arrange the tiles so that the highest tile is in the top left corner, and
+  the value of the tiles decreases as one moves away from this point.</p>
+
+<p>We use this basic strategic idea to come up with a formula which measures
+  the utility of a terminal position. The formula is designed to give
+  higher scores to positions which arrange the tiles in ways more closely
+  approximating the corner strategy's requirements. For example, it gives
+  higher scores to a high tile if the tile is closer to the top left corner;
+  it gives points for keeping the bottom two rows mostly clear; and it takes
+  away points for having a high tile in the bottom two rows.</p>
+
+<p>This fairly straightforward approach works remarkably well. The AI
+  almost always wins (i.e., produces the 2048 tile), and it is much better at the game
+  than most humans (including the author). However, it is probably not as
+  good as the best humans. Though verifiable information about human high scores
+  in 2048 is difficult to find, it seems to be the case that the best humans
+  do better than the program does.</p>
+
+<p>The program could be made better by improving the function for measuring
+  the utility of terminal positions. Statistical tuning can likely play a
+  role here; one could try out different values of the various parameters
+  in the formula, determine which ones do best using statistics, and
+  select the values of the parameters accordingly.</p>
+
+<p>Another question I have not explored enough is whether we can profitably increase the search depth
+  by figuring out rules or heuristics which let us avoid searching some parts of
+  the move tree. Chess AI programs, for example, use
+  <a href="https://en.wikipedia.org/wiki/Alpha-beta_pruning">alpha-beta pruning</a>,
+  a technique which lets them avoid searching some parts of the move tree by
+  proving that those portions cannot be relevant. Alpha-beta pruning is not
+  applicable to 2048, because the technique assumes that both players try
+  to play their best move, whereas in 2048 the computer simply moves randomly.
+  Though alpha-beta pruning is not applicable to 2048, there may be other similar
+  techniques which let us prove, or guess, that we can avoid searching certain
+  parts of the move tree. This could let us search the interesting parts of
+  the move tree more deeply, hopefully getting better outcomes.</p>
+
+<!-- <p>In any two-player game, you can think of the possible ways the game can
+  proceed as a tree. The current state of the game is the root of the tree.
+  Each possible move of the active player creates a branch from the root.
+  From each of those branches, each possible move of the other player creates
+  another branch; and so forth.</p> -->
+
 </div>
 
 <script src="jquery-1.11.3.js"></script>

@@ -2,8 +2,27 @@
   box-sizing: border-box;
 }
 
+body {
+  background-color: lightgrey;
+}
+
+.page {
+  background-color: white;
+  margin: auto;
+  width: 700px;
+  padding: 30px;
+  /*text-align: center;*/
+}
+
 .game {
   border-collapse: collapse;
+  margin: auto;
+  margin-bottom: 30px;
+}
+
+.controls {
+  margin-bottom: 10px;
+  text-align: center;
 }
 
 .game td {
@@ -24,4 +43,8 @@
 
 .cell-type-occupied {
   background-color: #EEE4DA;
+}
+
+.game .cell-type-bignum {
+  font-size: 48px;
 }

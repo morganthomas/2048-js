@@ -3,90 +3,100 @@ function getSquareDOM(loc) {
   return $(("#cell-" + loc.row) + loc.col);
 }
 
-// Quick and dirty display for a game board.
 function displayBoard(board) {
   allBoardLocs.forEach(function(loc) {
     var squareContents = board.get(loc);
     var squareDOM = getSquareDOM(loc);
-    squareDOM.removeClass(); // XXX: hack!
+    squareDOM.removeClass();
 
-    if (squareContents === null) {
+    if (squareContents === 0) {
       squareDOM.addClass("cell-type-empty");
       squareDOM.text("");
     } else {
-      // XXX: more fine-grained styling
       squareDOM.addClass("cell-type-occupied");
+
+      if (squareContents > 9) {
+        squareDOM.addClass("cell-type-bignum");
+      }
+
       squareDOM.text(Math.pow(2,squareContents));
     }
   });
 
   $("#score").text(scoreBoard(board));
-  $("#board-utility").text(boardTerminalUtility(board));
 }
 
 $(document).ready(function() {
   var board = new Board();
   displayBoard(board);
-  // board.set({ row: 0, col: 0 }, 1);
+  var gameTimer = null;
+  var gameIsRunning = false;
+  var gameIsPaused = false;
+  var isPlayersTurn = false;
 
-  // User controlled dummy interface
-  $(window).on('keypress', function(event) {
-    // w: 119, a: 97, s: 115, d: 100
-    var wasRelevant = false;
-    var direction;
+  var runMove = function() {
+    if (gameIsRunning && !gameIsPaused) {
+      if (isPlayersTurn) {
+        board = bestPlayerMove(board);
 
-    if (event.which === 119) {
-      wasRelevant = true;
-      direction = { row: -1, col: 0 };
-    } else if (event.which === 97) {
-      wasRelevant = true;
-      direction = { row: 0, col: -1 };
-    } else if (event.which === 115) {
-      wasRelevant = true;
-      direction = { row: 1, col: 0 };
-    } else if (event.which === 100) {
-      wasRelevant = true;
-      direction = { row: 0, col: 1 };
-    }
-
-    if (wasRelevant) {
-      console.log("keypress", event.which);
-
-      board = executePlayerMoveUnconditionally(board, direction);
-      displayBoard(board);
-
-      setTimeout(function() {
+        // Player is out of moves, so game is over.
+        if (board === null) {
+            gameIsRunning = false;
+            clearInterval(gameTimer);
+            gameTimer = null;
+            return;
+        }
+      } else {
         var moveDist = possibleComputerMoves(board);
         var moveIndex = randomComputerMove(moveDist);
         board = applyComputerMove(board, moveDist[moveIndex]);
-        displayBoard(board);
-      }, 500);
-    }
-  });
-
-  $('#game-start').on('click', function() {
-    var isPlayersTurn = false;
-    var gameIsOver = false;
-
-    setInterval(function() {
-      if (!gameIsOver) {
-        if (isPlayersTurn) {
-          board = bestPlayerMove(board);
-
-          if (board === null) {
-              gameIsOver = true;
-              return;
-          }
-        } else {
-          var moveDist = possibleComputerMoves(board);
-          var moveIndex = randomComputerMove(moveDist);
-          board = applyComputerMove(board, moveDist[moveIndex]);
-        }
-
-        isPlayersTurn = !isPlayersTurn;
-
-        displayBoard(board);
       }
-    }, 20);
-  });
+
+      isPlayersTurn = !isPlayersTurn;
+
+      displayBoard(board);
+    }
+  };
+
+  var startGame = function() {
+    gameIsPaused = false;
+
+    if (gameIsRunning) {
+      return;
+    }
+
+    gameIsRunning = true;
+    isPlayersTurn = false;
+
+    setGameTimer();
+  };
+
+  var unsetGameTimer = function() {
+    if (gameTimer !== null) {
+      clearInterval(gameTimer);
+      gameTimer = null;
+    }
+  }
+
+  var setGameTimer = function() {
+    unsetGameTimer();
+    var speed = Math.pow(10, (8 - parseInt($('#game-speed').val()) + 4) / 4);
+    gameTimer = setInterval(runMove, speed);
+  }
+
+  var resetGame = function() {
+    gameIsRunning = false;
+    unsetGameTimer();
+    board = new Board();
+    displayBoard(board);
+  };
+
+  var pauseGame = function() {
+    gameIsPaused = true;
+  }
+
+  $('#game-start').on('click', startGame);
+  $('#game-reset').on('click', resetGame);
+  $('#game-pause').on('click', pauseGame);
+  $('#game-speed').on('change', setGameTimer);
 });

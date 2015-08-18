@@ -2,10 +2,15 @@
 // Parameters controlling the AI.
 //
 
-var SEARCH_DEPTH = 4;
+var SEARCH_DEPTH_MIN = 4;
+var SEARCH_DEPTH_MID = 4;
+var SEARCH_DEPTH_MID_THRESHOLD = 9;
+var SEARCH_DEPTH_MAX = 4;
+var SEARCH_DEPTH_MAX_THRESHOLD = 13;
 var VALUE_OF_LOSS = -Math.pow(2,20);
 var VALUE_OF_EMPTY_SQUARE_ON_ROW_2 = 32;
 var VALUE_OF_EMPTY_SQUARE_ON_ROW_3 = 128;
+var DISUTILITY_OF_OCCUPIED_SQUARES_COEFFICIENT = 1;
 
 //
 // Utility
@@ -65,7 +70,7 @@ function Board() {
     this.array[row] = new Array(4);
 
     for (var col = 0; col < 4; col++) {
-      this.array[row][col] = null;
+      this.array[row][col] = 0;
     }
   }
 }
@@ -132,8 +137,21 @@ var allBoardLocs = function() {
 // Returns an array of all blank locations on the given board.
 function blankSquares(board) {
   return allBoardLocs.filter(function(loc) {
-    return board.get(loc) === null;
+    return board.get(loc) === 0;
   });
+}
+
+// Returns the number of occupied squares in the board.
+function numOccupiedSquares(board) {
+  var n = 0;
+
+  allBoardLocs.forEach(function(loc) {
+    if (board.get(loc) !== 0) {
+      n++;
+    }
+  });
+
+  return n;
 }
 
 // Returns the number of occupied squares in a given row on a given board.
@@ -141,7 +159,7 @@ function rowPopulation(board, rowNum) {
   var count = 0;
 
   for (var col = 0; col < 4; col++) {
-    if (board.get({ row: rowNum, col: col }) !== null) {
+    if (board.get({ row: rowNum, col: col }) !== 0) {
       count++;
     }
   }
@@ -151,11 +169,11 @@ function rowPopulation(board, rowNum) {
 
 // Returns the value of the smallest tile in the given row.
 function minValueInRow(board, rowNum) {
-  var min = null;
+  var min = 0;
 
   for (var col = 0; col < 4; col++) {
     var val = board.get({ row: rowNum, col: col });
-    if (val !== null && (min === null || val < min)) {
+    if (val !== 0 && (min === 0 || val < min)) {
       min = val;
     }
   }
@@ -305,9 +323,9 @@ function executePlayerMoveUnconditionally(board, direction) {
     for (var col = 3; col >= 0; col--) {
       var value = tboard.get({ row: row, col: col });
 
-      if (value !== null) {
+      if (value !== 0) {
         // Remove this tile
-        tboard.set({ row: row, col: col }, null );
+        tboard.set({ row: row, col: col }, 0);
 
         // See if it matches the tile to the right (if any)
         if (firstFreeCol + 1 < 4 &&
@@ -336,7 +354,7 @@ function scoreBoard(board) {
   return sum(allBoardLocs.map(function(loc) {
     var value = board.get(loc);
 
-    if (value === null) {
+    if (value === 0) {
       return 0;
     } else {
       return Math.pow(2,value);
@@ -351,11 +369,22 @@ function scoreBoard(board) {
 function boardTerminalUtility(board) {
   var utility = 0;
 
-  allBoardLocs.forEach(function(loc) {
-    utility += squareUtility(board, loc);
-  });
+  for (var i = 0; i < allBoardLocs.length; i++) {
+    utility += squareUtility(board, allBoardLocs[i]);
+  }
+
+  // allBoardLocs.forEach(function(loc) {
+  //   utility += squareUtility(board, loc);
+  // });
+
+  utility += disutilityOfOccupedSpace(board);
 
   return utility;
+}
+
+function disutilityOfOccupedSpace(board) {
+  return -Math.pow(2, numOccupiedSquares(board)) *
+    DISUTILITY_OF_OCCUPIED_SQUARES_COEFFICIENT;
 }
 
 // Takes a board and a location and returns the utility of that square
@@ -363,32 +392,22 @@ function boardTerminalUtility(board) {
 function squareUtility(board, loc) {
   var value = board.get(loc);
 
-  if (loc.row <= 1) {
-    if (value === null) {
-      return 0;
-    } else {
-      return Math.pow(2, value) *
-        Math.pow(2, 8 - highSquareOrdinalPos(loc))
-         + fineGrainedUtility(board, loc);
-    }
+  if (value === 0) {
+    return 0;
+  } else if (loc.row <= 1) {
+    return Math.pow(2, value) *
+      Math.pow(2, 8 - highSquareOrdinalPos(loc))
+       + fineGrainedUtility(board, loc);
   } else {
-    if (value === null) {
-      if (loc.row === 2) {
-        return VALUE_OF_EMPTY_SQUARE_ON_ROW_2;
-      } else {
-        return VALUE_OF_EMPTY_SQUARE_ON_ROW_3;
-      }
-    } else {
-      var ycoef;
+    var ycoef;
 
-      if (loc.row === 2) {
-        ycoef = 1;
-      } else if (loc.row === 3) {
-        ycoef = Math.pow(2, value);
-      }
-
-      return -Math.pow(2, value) * ycoef;
+    if (loc.row === 2) {
+      ycoef = 1;
+    } else if (loc.row === 3) {
+      ycoef = Math.pow(2, value);
     }
+
+    return -Math.pow(2, value) * ycoef;
   }
 }
 
@@ -405,16 +424,18 @@ function highSquareOrdinalPos(loc) {
 // Fine grained utility tweaks for tiles on the first two rows.
 function fineGrainedUtility(board, loc) {
   var value = board.get(loc);
+  // XXX: Recalculating these is redundant between calls, and redundant
+  // with calculation of disutility of occupied space.
   var row0Pop = rowPopulation(board,0);
   var row1Pop = rowPopulation(board, 1);
 
   // Negative utility for a lower piece on the first row surrounded by
   // higher pieces.
-  if (value !== null && loc.row === 0 && row0Pop === 4 &&
+  if (value !== 0 && loc.row === 0 && row0Pop === 4 &&
       row1Pop >= 3) {
     var parentValue = board.get({ row: 1, col: loc.col });
 
-    if (parentValue !== null && value < parentValue) {
+    if (parentValue !== 0 && value < parentValue) {
       return -Math.pow(2, 4 * (parentValue - value));
     }
   }
@@ -502,7 +523,18 @@ function evaluateOnPlayersTurn(searchDepth) {
 // Returns a maximally good move for a player, or null if they have no move.
 // The move is represented as a new board.
 function bestPlayerMove(board) {
-  var bestMove = bestPlayerMoveBy(evaluateOnComputersTurn(SEARCH_DEPTH), board);
+  var searchDepth;
+  var numSquares = numOccupiedSquares(board);
+
+  if (numSquares >= SEARCH_DEPTH_MAX_THRESHOLD) {
+    searchDepth = SEARCH_DEPTH_MAX;
+  } else if (numSquares >= SEARCH_DEPTH_MID_THRESHOLD) {
+    searchDepth = SEARCH_DEPTH_MID;
+  } else {
+    searchDepth = SEARCH_DEPTH_MIN;
+  }
+
+  var bestMove = bestPlayerMoveBy(evaluateOnComputersTurn(searchDepth), board);
 
   if (bestMove === null) {
     return null;
