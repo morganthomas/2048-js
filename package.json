@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "express": "^4"
+  },
+
+  "scripts": {
+    "deploy": "git pull bare master && forever restart app.js"
+  }
+}
